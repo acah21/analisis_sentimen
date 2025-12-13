@@ -1,10 +1,11 @@
 streamlit
 pandas
 numpy
+matplotlib
 emoji
+joblib
 nltk
 Sastrawi
 google-api-python-client
 xgboost
-joblib
-matplotlib
+scikit-learn
