@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+emoji
+nltk
+Sastrawi
+google-api-python-client
+xgboost
+joblib
+matplotlib
