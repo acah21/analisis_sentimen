@@ -1,91 +1,64 @@
-# ======================================================
-# Dashboard Analisis Sentimen YouTube
-# TF-IDF + XGBoost | Mount Jawa Style
-# ======================================================
-
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
-import re, emoji, joblib, base64
+import re, emoji, joblib
 import matplotlib.pyplot as plt
-
 from googleapiclient.discovery import build
 from nltk.corpus import stopwords
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 import nltk
 
-# ======================================================
-# PAGE CONFIG
-# ======================================================
-st.set_page_config(
-    page_title="Analisis Sentimen YouTube",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+# ==================================
+# CONFIG
+# ==================================
+st.set_page_config(page_title="Analisis Sentimen YouTube", layout="wide")
 
-# ======================================================
-# CSS GLOBAL (FULL SCREEN + SIDEBAR HOVER)
-# ======================================================
-st.markdown(
-    """
-    <style>
-    /* Hilangkan header */
-    header {visibility: hidden;}
+# ==================================
+# CSS BACKGROUND (MENIRU MOUNT JAWA)
+# ==================================
+homepage_bg = """
+<style>
+[data-testid="stAppViewContainer"] {
+    background-image: url('bg.jpeg');
+    background-size: cover;
+    background-position: center;
+}
+</style>
+"""
 
-    /* Hilangkan padding bawaan */
-    [data-testid="stAppViewContainer"] {
-        padding: 0;
-        margin: 0;
-    }
+result_bg = """
+<style>
+[data-testid="stAppViewContainer"] {
+    background: #ffffff !important;
+}
+</style>
+"""
 
-    /* Sidebar hover ala Mount Jawa */
-    [data-testid="stSidebar"] {
-        width: 70px;
-        transition: all 0.3s ease;
-        overflow-x: hidden;
-    }
+# ==================================
+# STATE
+# ==================================
+if "page" not in st.session_state:
+    st.session_state.page = "home"
 
-    [data-testid="stSidebar"]:hover {
-        width: 260px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# ======================================================
-# LOAD BACKGROUND IMAGE (BASE64)
-# ======================================================
-def load_bg(path):
-    with open(path, "rb") as f:
-        return base64.b64encode(f.read()).decode()
-
-bg_img = load_bg("bg.jpeg")
-
-# ======================================================
+# ==================================
 # NLTK SAFE
-# ======================================================
+# ==================================
 try:
     nltk.data.find("corpora/stopwords")
 except LookupError:
     nltk.download("stopwords")
 
-# ======================================================
+# ==================================
 # LOAD MODEL
-# ======================================================
+# ==================================
 model = joblib.load("model_xgboost_sentiment.pkl")
 tfidf = joblib.load("tfidf_vectorizer.pkl")
 
-# ======================================================
+# ==================================
 # PREPROCESSING
-# ======================================================
+# ==================================
 stop_words = set(stopwords.words("indonesian"))
 stemmer = StemmerFactory().create_stemmer()
-
-normalisasi = {
-    "gk": "tidak", "ga": "tidak", "ngga": "tidak",
-    "yg": "yang", "d": "di", "klo": "kalau",
-    "gw": "saya", "gue": "saya", "km": "kamu", "tp": "tapi"
-}
 
 def preprocess_text(text):
     text = str(text).lower()
@@ -93,17 +66,14 @@ def preprocess_text(text):
     text = re.sub(r"http\S+|www\S+", "", text)
     text = re.sub(r"[^a-z\s]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
-
     tokens = text.split()
-    tokens = [normalisasi.get(t, t) for t in tokens]
     tokens = [t for t in tokens if t not in stop_words and len(t) > 2]
     tokens = [stemmer.stem(t) for t in tokens]
-
     return " ".join(tokens)
 
-# ======================================================
-# YOUTUBE FUNCTIONS
-# ======================================================
+# ==================================
+# YOUTUBE
+# ==================================
 API_KEY = "ISI_API_KEY_KAMU"
 
 def extract_video_id(url):
@@ -115,8 +85,7 @@ def extract_video_id(url):
 
 def get_comments(video_id, max_results=300):
     youtube = build("youtube", "v3", developerKey=API_KEY)
-    comments = []
-    next_page_token = None
+    comments, next_page_token = [], None
 
     while len(comments) < max_results:
         response = youtube.commentThreads().list(
@@ -138,117 +107,84 @@ def get_comments(video_id, max_results=300):
 
     return comments
 
-# ======================================================
-# SESSION STATE
-# ======================================================
-if "page" not in st.session_state:
-    st.session_state.page = "home"
+# ==================================
+# SIDEBAR (MENIRU MOUNT JAWA)
+# ==================================
+st.sidebar.header("Pilih Analisis")
 
-# ======================================================
-# SIDEBAR (MENU SAJA)
-# ======================================================
-st.sidebar.markdown("## 🔍 Menu")
+yt_link = st.sidebar.text_input("Link YouTube")
+kalimat = st.sidebar.text_area("Kalimat")
 
 if st.sidebar.button("🎥 Analisis YouTube"):
-    st.session_state.page = "youtube"
+    st.session_state.page = "yt"
 
 if st.sidebar.button("📝 Analisis Kalimat"):
     st.session_state.page = "kalimat"
 
-# ======================================================
-# HOME PAGE (FULL SCREEN)
-# ======================================================
+# ==================================
+# PAGE 1: HOME
+# ==================================
 if st.session_state.page == "home":
+    st.markdown(homepage_bg, unsafe_allow_html=True)
 
-    st.markdown(
-        f"""
-        <style>
-        .hero {{
-            height: 100vh;
-            width: 100vw;
-            background-image: url("data:image/jpeg;base64,{bg_img}");
-            background-size: cover;
-            background-position: center;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }}
-        .overlay {{
-            background: rgba(0,0,0,0.6);
-            padding: 70px;
-            border-radius: 20px;
-            text-align: center;
-            color: white;
-        }}
-        </style>
+    st.markdown("""
+    <div style="
+        background: rgba(255,255,255,0.85);
+        padding: 40px;
+        border-radius: 20px;
+        margin-top: 120px;
+        text-align: center;">
+        <h1>Dashboard Analisis Sentimen YouTube</h1>
+        <p>Menganalisis sentimen komentar YouTube & kalimat teks</p>
+        <p>Gunakan menu di sidebar untuk memulai analisis</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-        <div class="hero">
-            <div class="overlay">
-                <h1>Dashboard Analisis Sentimen YouTube</h1>
-                <p>TF-IDF + XGBoost</p>
-                <p>Gunakan menu di kiri untuk memulai analisis</p>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+# ==================================
+# PAGE 2: ANALISIS YOUTUBE
+# ==================================
+elif st.session_state.page == "yt":
+    st.markdown(result_bg, unsafe_allow_html=True)
+    st.header("📊 Hasil Analisis Sentimen YouTube")
 
-# ======================================================
-# ANALISIS YOUTUBE
-# ======================================================
-elif st.session_state.page == "youtube":
+    video_id = extract_video_id(yt_link)
 
-    st.title("🎥 Analisis Sentimen YouTube")
-    link = st.text_input("Masukkan link YouTube")
+    if video_id:
+        with st.spinner("Mengambil komentar..."):
+            comments = get_comments(video_id)
+            df = pd.DataFrame(comments, columns=["comment"])
+            df["clean"] = df["comment"].apply(preprocess_text)
+            df["label"] = model.predict(tfidf.transform(df["clean"]))
+            df["sentiment"] = df["label"].map({1:"Positif",0:"Negatif"})
 
-    if st.button("📊 Analisis Komentar"):
-        video_id = extract_video_id(link)
+        fig, ax = plt.subplots()
+        df["sentiment"].value_counts().plot.pie(
+            autopct="%1.1f%%", ax=ax
+        )
+        ax.set_ylabel("")
+        st.pyplot(fig)
 
-        if not video_id:
-            st.error("Link YouTube tidak valid")
-        else:
-            with st.spinner("Mengambil dan menganalisis komentar..."):
-                comments = get_comments(video_id)
-                df = pd.DataFrame(comments, columns=["comment"])
-                df["clean"] = df["comment"].apply(preprocess_text)
+        st.subheader("Top 5 Komentar Positif")
+        st.write(df[df["sentiment"]=="Positif"]["comment"].head())
 
-                X = tfidf.transform(df["clean"])
-                df["sentiment"] = model.predict(X)
-                df["sentiment"] = df["sentiment"].map({1: "Positif", 0: "Negatif"})
+        st.subheader("Top 5 Komentar Negatif")
+        st.write(df[df["sentiment"]=="Negatif"]["comment"].head())
 
-            st.success("Analisis selesai")
-
-            fig, ax = plt.subplots()
-            df["sentiment"].value_counts().plot.pie(
-                autopct="%1.1f%%", ax=ax
-            )
-            ax.set_ylabel("")
-            st.pyplot(fig)
-
-            st.subheader("Top 5 Komentar Positif")
-            st.write(df[df["sentiment"]=="Positif"]["comment"].head(5))
-
-            st.subheader("Top 5 Komentar Negatif")
-            st.write(df[df["sentiment"]=="Negatif"]["comment"].head(5))
-
-    if st.button("⬅️ Kembali ke Home"):
+    if st.button("⬅️ Kembali ke Beranda"):
         st.session_state.page = "home"
 
-# ======================================================
-# ANALISIS KALIMAT
-# ======================================================
+# ==================================
+# PAGE 3: ANALISIS KALIMAT
+# ==================================
 elif st.session_state.page == "kalimat":
+    st.markdown(result_bg, unsafe_allow_html=True)
+    st.header("📝 Hasil Analisis Kalimat")
 
-    st.title("📝 Analisis Sentimen Kalimat")
-    kalimat = st.text_area("Masukkan kalimat")
+    clean = preprocess_text(kalimat)
+    pred = model.predict(tfidf.transform([clean]))[0]
 
-    if st.button("🔍 Analisis Kalimat"):
-        clean = preprocess_text(kalimat)
-        X = tfidf.transform([clean])
-        pred = model.predict(X)[0]
+    st.info(f"Kalimat yang dianalisis:\n\n{kalimat}")
+    st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
 
-        st.info(f"Kalimat: {kalimat}")
-        st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
-
-    if st.button("⬅️ Kembali ke Home"):
+    if st.button("⬅️ Kembali ke Beranda"):
         st.session_state.page = "home"
