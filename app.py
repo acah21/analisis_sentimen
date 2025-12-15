@@ -1,6 +1,6 @@
 # ===============================
 # Dashboard Analisis Sentimen YouTube
-# TF-IDF + XGBoost
+# TF-IDF + XGBoost (SAFE VERSION)
 # ===============================
 
 import streamlit as st
@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # ===============================
-# DOWNLOAD NLTK (AMAN DI STREAMLIT)
+# DOWNLOAD NLTK (AMAN)
 # ===============================
 try:
     nltk.data.find("corpora/stopwords")
@@ -33,8 +33,13 @@ except LookupError:
 # ===============================
 # LOAD MODEL
 # ===============================
-model = joblib.load("model_xgboost_sentiment.pkl")
-tfidf = joblib.load("tfidf_vectorizer.pkl")
+@st.cache_resource
+def load_model():
+    model = joblib.load("model_xgboost_sentiment.pkl")
+    tfidf = joblib.load("tfidf_vectorizer.pkl")
+    return model, tfidf
+
+model, tfidf = load_model()
 
 # ===============================
 # PREPROCESSING
@@ -63,9 +68,9 @@ def preprocess_text(text):
     return " ".join(tokens)
 
 # ===============================
-# YOUTUBE FUNCTIONS
+# YOUTUBE FUNCTIONS (SAFE)
 # ===============================
-API_KEY = "AIzaSyCz4yYoK_w-3IYkbeGCHtL4CoATBf6VN1I"
+API_KEY = st.secrets["YOUTUBE_API_KEY"]
 
 def extract_video_id(url):
     if "youtu.be/" in url:
@@ -75,7 +80,7 @@ def extract_video_id(url):
     else:
         return None
 
-def get_comments(video_id, max_results=500):
+def get_comments(video_id, max_results=300):
     youtube = build("youtube", "v3", developerKey=API_KEY)
     comments = []
     next_page_token = None
@@ -118,7 +123,7 @@ if st.session_state.page == "home":
             background-image: url("bg.jpeg");
             background-size: cover;
             background-position: center;
-            padding: 160px 40px;
+            padding: 180px 40px;
             border-radius: 20px;
             color: white;
             text-align: center;
@@ -133,13 +138,12 @@ if st.session_state.page == "home":
         <div class="hero">
             <h1>Dashboard Analisis Sentimen YouTube</h1>
             <h3>TF-IDF + XGBoost</h3>
-            <p>Menganalisis komentar video YouTube secara otomatis</p>
+            <p>Menganalisis komentar & kalimat secara otomatis</p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.write("")
     st.write("")
     if st.button("🔍 Mulai Analisis Sentimen"):
         st.session_state.page = "input"
@@ -152,22 +156,20 @@ elif st.session_state.page == "input":
     st.title("📥 Input Data Analisis")
 
     yt_link = st.text_input("Masukkan Link YouTube")
-    kalimat = st.text_area("Masukkan Kalimat (opsional)")
+    st.write("")
+    if st.button("📊 Analisis YouTube"):
+        st.session_state.yt_link = yt_link
+        st.session_state.page = "hasil"
 
-    col1, col2 = st.columns(2)
+    st.divider()
 
-    with col1:
-        if st.button("📊 Analisis YouTube"):
-            st.session_state.yt_link = yt_link
-            st.session_state.page = "hasil"
-
-    with col2:
-        if st.button("📝 Analisis Kalimat"):
-            clean = preprocess_text(kalimat)
-            X = tfidf.transform([clean])
-            pred = model.predict(X)[0]
-            st.session_state.single_result = "Positif" if pred == 1 else "Negatif"
-            st.session_state.page = "hasil"
+    kalimat = st.text_area("Masukkan Kalimat")
+    if st.button("📝 Analisis Kalimat"):
+        clean = preprocess_text(kalimat)
+        X = tfidf.transform([clean])
+        pred = model.predict(X)[0]
+        st.session_state.single_result = "Positif" if pred == 1 else "Negatif"
+        st.session_state.page = "hasil"
 
     st.write("")
     if st.button("⬅️ Kembali"):
@@ -182,7 +184,7 @@ elif st.session_state.page == "hasil":
 
     # ----- HASIL KALIMAT -----
     if "single_result" in st.session_state:
-        st.subheader("Hasil Analisis Kalimat")
+        st.subheader("📝 Hasil Analisis Kalimat")
         st.success(f"Sentimen: **{st.session_state.single_result}**")
 
     # ----- HASIL YOUTUBE -----
@@ -197,7 +199,7 @@ elif st.session_state.page == "hasil":
         df["label"] = model.predict(X)
         df["sentiment"] = df["label"].map({1: "Positif", 0: "Negatif"})
 
-        st.subheader("Distribusi Sentimen")
+        st.subheader("📊 Distribusi Sentimen")
         fig, ax = plt.subplots()
         df["sentiment"].value_counts().plot.pie(
             autopct="%1.1f%%", ax=ax
@@ -205,10 +207,10 @@ elif st.session_state.page == "hasil":
         ax.set_ylabel("")
         st.pyplot(fig)
 
-        st.subheader("Top 5 Komentar Positif")
+        st.subheader("👍 Top 5 Komentar Positif")
         st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
 
-        st.subheader("Top 5 Komentar Negatif")
+        st.subheader("👎 Top 5 Komentar Negatif")
         st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
 
     st.write("")
