@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import re, emoji, joblib
 import matplotlib.pyplot as plt
+import base64
 
 from googleapiclient.discovery import build
 from nltk.corpus import stopwords
@@ -21,6 +22,15 @@ st.set_page_config(
     page_title="Analisis Sentimen YouTube",
     layout="wide"
 )
+
+# ===============================
+# LOAD IMAGE (BASE64)
+# ===============================
+def get_base64_image(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+bg_base64 = get_base64_image("bg.jpeg")
 
 # ===============================
 # NLTK SAFE DOWNLOAD
@@ -111,48 +121,37 @@ if "menu" not in st.session_state:
 if st.session_state.menu == "home":
 
     st.markdown(
-        """
+        f"""
         <style>
-        .hero {
-            position: relative;
-            height: 85vh;
-            background-image: url("bg.jpeg");
+        .hero {{
+            height: 90vh;
+            background-image: url("data:image/jpeg;base64,{bg_base64}");
             background-size: cover;
             background-position: center;
             border-radius: 20px;
-        }
-        .overlay {
-            position: absolute;
-            inset: 0;
-            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .overlay {{
+            background: rgba(0,0,0,0.55);
+            padding: 60px;
             border-radius: 20px;
-        }
-        .hero-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             text-align: center;
             color: white;
-        }
-        .hero h1 {
+            width: 80%;
+        }}
+        .overlay h1 {{
             font-size: 3rem;
-            margin-bottom: 10px;
-        }
-        .hero p {
+        }}
+        .overlay p {{
             font-size: 1.2rem;
             margin-bottom: 30px;
-        }
+        }}
         </style>
-        """,
-        unsafe_allow_html=True
-    )
 
-    st.markdown(
-        """
         <div class="hero">
-            <div class="overlay"></div>
-            <div class="hero-content">
+            <div class="overlay">
                 <h1>Dashboard Analisis Sentimen YouTube</h1>
                 <p>TF-IDF + XGBoost untuk Analisis Komentar</p>
             </div>
