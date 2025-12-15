@@ -1,11 +1,10 @@
 # ===============================
 # Dashboard Analisis Sentimen YouTube
-# TF-IDF + XGBoost (SAFE VERSION)
+# TF-IDF + XGBoost
 # ===============================
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import re, emoji, joblib
 import matplotlib.pyplot as plt
 
@@ -23,7 +22,7 @@ st.set_page_config(
 )
 
 # ===============================
-# DOWNLOAD NLTK (AMAN)
+# NLTK
 # ===============================
 try:
     nltk.data.find("corpora/stopwords")
@@ -33,25 +32,14 @@ except LookupError:
 # ===============================
 # LOAD MODEL
 # ===============================
-@st.cache_resource
-def load_model():
-    model = joblib.load("model_xgboost_sentiment.pkl")
-    tfidf = joblib.load("tfidf_vectorizer.pkl")
-    return model, tfidf
-
-model, tfidf = load_model()
+model = joblib.load("model_xgboost_sentiment.pkl")
+tfidf = joblib.load("tfidf_vectorizer.pkl")
 
 # ===============================
 # PREPROCESSING
 # ===============================
 stop_words = set(stopwords.words("indonesian"))
 stemmer = StemmerFactory().create_stemmer()
-
-normalisasi_dict = {
-    "gk": "tidak", "ga": "tidak", "ngga": "tidak",
-    "yg": "yang", "d": "di", "klo": "kalau",
-    "gw": "saya", "gue": "saya", "km": "kamu", "tp": "tapi"
-}
 
 def preprocess_text(text):
     text = str(text).lower()
@@ -61,14 +49,13 @@ def preprocess_text(text):
     text = re.sub(r"\s+", " ", text).strip()
 
     tokens = text.split()
-    tokens = [normalisasi_dict.get(t, t) for t in tokens]
     tokens = [t for t in tokens if t not in stop_words and len(t) > 2]
     tokens = [stemmer.stem(t) for t in tokens]
 
     return " ".join(tokens)
 
 # ===============================
-# YOUTUBE FUNCTIONS (SAFE)
+# YOUTUBE
 # ===============================
 API_KEY = st.secrets["YOUTUBE_API_KEY"]
 
@@ -77,121 +64,144 @@ def extract_video_id(url):
         return url.split("youtu.be/")[1].split("?")[0]
     elif "v=" in url:
         return url.split("v=")[1].split("&")[0]
-    else:
-        return None
+    return None
 
 def get_comments(video_id, max_results=300):
     youtube = build("youtube", "v3", developerKey=API_KEY)
     comments = []
-    next_page_token = None
+    next_page = None
 
     while len(comments) < max_results:
-        response = youtube.commentThreads().list(
+        res = youtube.commentThreads().list(
             part="snippet",
             videoId=video_id,
             maxResults=100,
-            pageToken=next_page_token,
+            pageToken=next_page,
             textFormat="plainText"
         ).execute()
 
-        for item in response["items"]:
+        for item in res["items"]:
             comments.append(
                 item["snippet"]["topLevelComment"]["snippet"]["textDisplay"]
             )
 
-        next_page_token = response.get("nextPageToken")
-        if not next_page_token:
+        next_page = res.get("nextPageToken")
+        if not next_page:
             break
 
     return comments
 
 # ===============================
-# SESSION STATE
+# SESSION
 # ===============================
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # ===============================
-# HOME PAGE
+# HOME
 # ===============================
 if st.session_state.page == "home":
 
-    st.markdown(
-        """
-        <style>
-        .hero {
-            background-image: url("bg.jpeg");
-            background-size: cover;
-            background-position: center;
-            padding: 180px 40px;
-            border-radius: 20px;
-            color: white;
-            text-align: center;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
+    st.markdown("""
+    <style>
+    .hero {
+        background-image: url("bg.jpeg");
+        background-size: cover;
+        background-position: center;
+        height: 80vh;
+        border-radius: 24px;
+        position: relative;
+    }
+    .overlay {
+        background: rgba(0,0,0,0.55);
+        height: 100%;
+        border-radius: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        text-align: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    st.markdown(
-        """
-        <div class="hero">
-            <h1>Dashboard Analisis Sentimen YouTube</h1>
-            <h3>TF-IDF + XGBoost</h3>
-            <p>Menganalisis komentar & kalimat secara otomatis</p>
+    st.markdown("""
+    <div class="hero">
+        <div class="overlay">
+            <div>
+                <h1>Analisis Sentimen YouTube</h1>
+                <p>TF-IDF + XGBoost</p>
+            </div>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
+    </div>
+    """, unsafe_allow_html=True)
 
     st.write("")
-    if st.button("🔍 Mulai Analisis Sentimen"):
+    if st.button("🚀 Mulai Analisis"):
         st.session_state.page = "input"
 
 # ===============================
-# INPUT PAGE
+# INPUT
 # ===============================
 elif st.session_state.page == "input":
 
     st.title("📥 Input Data Analisis")
 
-    yt_link = st.text_input("Masukkan Link YouTube")
-    st.write("")
+    yt_link = st.text_input("🔗 Masukkan Link YouTube")
     if st.button("📊 Analisis YouTube"):
         st.session_state.yt_link = yt_link
         st.session_state.page = "hasil"
 
-    st.divider()
+    st.markdown("---")
 
-    kalimat = st.text_area("Masukkan Kalimat")
-    if st.button("📝 Analisis Kalimat"):
+    kalimat = st.text_area("📝 Masukkan Kalimat")
+    if st.button("🧠 Analisis Kalimat"):
+        st.session_state.input_kalimat = kalimat
+
         clean = preprocess_text(kalimat)
         X = tfidf.transform([clean])
         pred = model.predict(X)[0]
+
         st.session_state.single_result = "Positif" if pred == 1 else "Negatif"
         st.session_state.page = "hasil"
 
-    st.write("")
-    if st.button("⬅️ Kembali"):
+    if st.button("⬅️ Kembali ke Home"):
         st.session_state.page = "home"
 
 # ===============================
-# HASIL PAGE
+# HASIL
 # ===============================
 elif st.session_state.page == "hasil":
 
     st.title("📈 Hasil Analisis Sentimen")
 
-    # ----- HASIL KALIMAT -----
+    # ===== HASIL KALIMAT =====
     if "single_result" in st.session_state:
-        st.subheader("📝 Hasil Analisis Kalimat")
-        st.success(f"Sentimen: **{st.session_state.single_result}**")
+        st.subheader("Hasil Analisis Kalimat")
 
-    # ----- HASIL YOUTUBE -----
+        st.info(
+            f"""
+            **Kalimat yang dianalisis:**
+
+            > {st.session_state.input_kalimat}
+            """
+        )
+
+        st.success(
+            f"""
+            **Hasil Sentimen:**  
+            👉 **{st.session_state.single_result}**
+
+            Artinya, berdasarkan model yang digunakan, kalimat tersebut
+            mengandung sentimen **{st.session_state.single_result.lower()}**.
+            """
+        )
+
+    # ===== HASIL YOUTUBE =====
     if "yt_link" in st.session_state:
-        video_id = extract_video_id(st.session_state.yt_link)
+        vid = extract_video_id(st.session_state.yt_link)
+        comments = get_comments(vid)
 
-        comments = get_comments(video_id)
         df = pd.DataFrame(comments, columns=["comment"])
         df["clean"] = df["comment"].apply(preprocess_text)
 
@@ -199,7 +209,7 @@ elif st.session_state.page == "hasil":
         df["label"] = model.predict(X)
         df["sentiment"] = df["label"].map({1: "Positif", 0: "Negatif"})
 
-        st.subheader("📊 Distribusi Sentimen")
+        st.subheader("Distribusi Sentimen Komentar YouTube")
         fig, ax = plt.subplots()
         df["sentiment"].value_counts().plot.pie(
             autopct="%1.1f%%", ax=ax
@@ -207,12 +217,5 @@ elif st.session_state.page == "hasil":
         ax.set_ylabel("")
         st.pyplot(fig)
 
-        st.subheader("👍 Top 5 Komentar Positif")
-        st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
-
-        st.subheader("👎 Top 5 Komentar Negatif")
-        st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
-
-    st.write("")
-    if st.button("⬅️ Kembali ke Home"):
-        st.session_state.page = "home"
+    if st.button("⬅️ Kembali ke Input"):
+        st.session_state.page = "input"
