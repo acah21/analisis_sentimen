@@ -71,7 +71,7 @@ def preprocess_text(text):
     return " ".join(tokens)
 
 # =====================================
-# YOUTUBE FUNCTIONS (SAFE)
+# YOUTUBE FUNCTIONS
 # =====================================
 API_KEY = st.secrets["YOUTUBE_API_KEY"]
 
@@ -172,7 +172,6 @@ if st.session_state.page == "home":
 elif st.session_state.page == "youtube":
 
     st.title("🎥 Analisis Sentimen Komentar YouTube")
-
     link = st.text_input("Masukkan link YouTube")
 
     if st.button("📊 Analisis Komentar"):
@@ -192,19 +191,53 @@ elif st.session_state.page == "youtube":
 
             st.success("Analisis selesai")
 
-            st.subheader("Distribusi Sentimen")
-            fig, ax = plt.subplots()
-            df["sentiment"].value_counts().plot.pie(
-                autopct="%1.1f%%", ax=ax
-            )
-            ax.set_ylabel("")
-            st.pyplot(fig)
+            # ===============================
+            # DISTRIBUSI & PENJELASAN
+            # ===============================
+            st.subheader("📊 Distribusi Sentimen")
 
-            st.subheader("Top 5 Komentar Positif")
-            st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
+            sentiment_count = df["sentiment"].value_counts()
+            total = sentiment_count.sum()
 
-            st.subheader("Top 5 Komentar Negatif")
-            st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
+            positif_pct = (sentiment_count.get("Positif", 0) / total) * 100
+            negatif_pct = (sentiment_count.get("Negatif", 0) / total) * 100
+
+            col1, col2 = st.columns([1, 2])
+
+            with col1:
+                fig, ax = plt.subplots(figsize=(3.8, 3.8))
+                sentiment_count.plot.pie(
+                    autopct="%1.1f%%",
+                    startangle=90,
+                    ax=ax
+                )
+                ax.set_ylabel("")
+                st.pyplot(fig)
+
+            with col2:
+                st.markdown("### 🧾 Interpretasi Hasil")
+                st.write(
+                    f"""
+                    Dari **{total} komentar** yang dianalisis:
+                    - **{positif_pct:.2f}%** bersentimen **positif**
+                    - **{negatif_pct:.2f}%** bersentimen **negatif**
+
+                    Hal ini menunjukkan bahwa respons pengguna terhadap video
+                    cenderung **{"positif" if positif_pct > negatif_pct else "negatif"}**.
+                    """
+                )
+
+            st.markdown("---")
+
+            col3, col4 = st.columns(2)
+
+            with col3:
+                st.markdown("**Top 5 Komentar Positif**")
+                st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
+
+            with col4:
+                st.markdown("**Top 5 Komentar Negatif**")
+                st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
 
 # =====================================
 # ANALISIS KALIMAT
@@ -212,7 +245,6 @@ elif st.session_state.page == "youtube":
 elif st.session_state.page == "kalimat":
 
     st.title("📝 Analisis Sentimen Kalimat")
-
     kalimat = st.text_area("Masukkan kalimat")
 
     if st.button("🔍 Analisis Kalimat"):
