@@ -24,16 +24,16 @@ st.set_page_config(
 )
 
 # ===============================
-# LOAD IMAGE (BASE64)
+# LOAD IMAGE BASE64
 # ===============================
 def get_base64_image(path):
     with open(path, "rb") as f:
         return base64.b64encode(f.read()).decode()
 
-bg_base64 = get_base64_image("bg.jpeg")
+bg = get_base64_image("bg.jpeg")
 
 # ===============================
-# NLTK SAFE DOWNLOAD
+# NLTK SAFE
 # ===============================
 try:
     nltk.data.find("corpora/stopwords")
@@ -73,7 +73,7 @@ def preprocess_text(text):
     return " ".join(tokens)
 
 # ===============================
-# YOUTUBE FUNCTIONS
+# YOUTUBE FUNCTION
 # ===============================
 API_KEY = "ISI_API_KEY_KAMU"
 
@@ -112,48 +112,43 @@ def get_comments(video_id, max_results=300):
 # ===============================
 # SESSION STATE
 # ===============================
-if "menu" not in st.session_state:
-    st.session_state.menu = "home"
+if "page" not in st.session_state:
+    st.session_state.page = "home"
 
 # ===============================
-# HOME PAGE (MOUNT JAWA STYLE)
+# HOME PAGE
 # ===============================
-if st.session_state.menu == "home":
+if st.session_state.page == "home":
 
     st.markdown(
         f"""
         <style>
         .hero {{
-            height: 90vh;
-            background-image: url("data:image/jpeg;base64,{bg_base64}");
+            height: 100vh;
+            background-image: url("data:image/jpeg;base64,{bg}");
             background-size: cover;
             background-position: center;
-            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
         }}
-        .overlay {{
+        .content {{
             background: rgba(0,0,0,0.55);
             padding: 60px;
             border-radius: 20px;
-            text-align: center;
             color: white;
+            text-align: center;
             width: 80%;
         }}
-        .overlay h1 {{
+        .content h1 {{
             font-size: 3rem;
-        }}
-        .overlay p {{
-            font-size: 1.2rem;
-            margin-bottom: 30px;
         }}
         </style>
 
         <div class="hero">
-            <div class="overlay">
+            <div class="content">
                 <h1>Dashboard Analisis Sentimen YouTube</h1>
-                <p>TF-IDF + XGBoost untuk Analisis Komentar</p>
+                <p>Analisis komentar YouTube menggunakan TF-IDF dan XGBoost</p>
             </div>
         </div>
         """,
@@ -161,78 +156,60 @@ if st.session_state.menu == "home":
     )
 
     st.write("")
-    col1, col2 = st.columns(2)
+    st.write("")
 
+    col1, col2 = st.columns(2)
     with col1:
         if st.button("🎥 Analisis YouTube"):
-            st.session_state.menu = "youtube"
+            st.session_state.page = "youtube"
             st.rerun()
 
     with col2:
         if st.button("📝 Analisis Kalimat"):
-            st.session_state.menu = "kalimat"
+            st.session_state.page = "kalimat"
             st.rerun()
 
 # ===============================
 # ANALISIS YOUTUBE
 # ===============================
-elif st.session_state.menu == "youtube":
+elif st.session_state.page == "youtube":
 
     st.title("🎥 Analisis Sentimen YouTube")
-
-    link = st.text_input("Masukkan Link YouTube")
+    link = st.text_input("Masukkan link YouTube")
 
     if st.button("📊 Analisis"):
         video_id = extract_video_id(link)
-
-        if video_id is None:
-            st.error("Link YouTube tidak valid")
-        else:
-            with st.spinner("Mengambil & menganalisis komentar..."):
+        if video_id:
+            with st.spinner("Memproses komentar..."):
                 comments = get_comments(video_id)
                 df = pd.DataFrame(comments, columns=["comment"])
                 df["clean"] = df["comment"].apply(preprocess_text)
 
                 X = tfidf.transform(df["clean"])
-                df["label"] = model.predict(X)
-                df["sentiment"] = df["label"].map({1: "Positif", 0: "Negatif"})
+                df["sentiment"] = model.predict(X)
 
-            st.subheader("Distribusi Sentimen")
-            fig, ax = plt.subplots()
-            df["sentiment"].value_counts().plot.pie(
-                autopct="%1.1f%%", ax=ax
-            )
-            ax.set_ylabel("")
-            st.pyplot(fig)
-
-            st.subheader("Top 5 Komentar Positif")
-            st.write(df[df["sentiment"]=="Positif"]["comment"].head(5))
-
-            st.subheader("Top 5 Komentar Negatif")
-            st.write(df[df["sentiment"]=="Negatif"]["comment"].head(5))
+            st.success("Analisis selesai")
 
     if st.button("⬅️ Kembali"):
-        st.session_state.menu = "home"
+        st.session_state.page = "home"
         st.rerun()
 
 # ===============================
 # ANALISIS KALIMAT
 # ===============================
-elif st.session_state.menu == "kalimat":
+elif st.session_state.page == "kalimat":
 
     st.title("📝 Analisis Sentimen Kalimat")
-
-    kalimat = st.text_area("Masukkan kalimat yang ingin dianalisis")
+    kalimat = st.text_area("Masukkan kalimat")
 
     if st.button("🔍 Analisis Kalimat"):
         clean = preprocess_text(kalimat)
         X = tfidf.transform([clean])
         pred = model.predict(X)[0]
 
-        st.subheader("Hasil Analisis")
         st.info(f"Kalimat: {kalimat}")
-        st.success("Sentimen: POSITIF" if pred == 1 else "Sentimen: NEGATIF")
+        st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
 
     if st.button("⬅️ Kembali"):
-        st.session_state.menu = "home"
+        st.session_state.page = "home"
         st.rerun()
