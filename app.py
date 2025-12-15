@@ -116,9 +116,19 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # ===============================
-# HOME PAGE
+# SIDEBAR NAVIGATION
 # ===============================
-if st.session_state.page == "home":
+st.sidebar.title("📌 Menu")
+
+menu = st.sidebar.radio(
+    "Navigasi",
+    ["Home", "Analisis YouTube", "Analisis Kalimat"]
+)
+
+# ===============================
+# HOME PAGE (FULL SCREEN)
+# ===============================
+if menu == "Home":
 
     st.markdown(
         f"""
@@ -134,82 +144,86 @@ if st.session_state.page == "home":
         }}
         .content {{
             background: rgba(0,0,0,0.55);
-            padding: 60px;
+            padding: 70px;
             border-radius: 20px;
             color: white;
             text-align: center;
-            width: 80%;
+            width: 85%;
         }}
         .content h1 {{
-            font-size: 3rem;
+            font-size: 3.2rem;
         }}
         </style>
 
         <div class="hero">
             <div class="content">
                 <h1>Dashboard Analisis Sentimen YouTube</h1>
-                <p>Analisis komentar YouTube menggunakan TF-IDF dan XGBoost</p>
+                <p>
+                    Analisis komentar YouTube dan kalimat teks<br>
+                    menggunakan TF-IDF dan XGBoost
+                </p>
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    st.write("")
-    st.write("")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🎥 Analisis YouTube"):
-            st.session_state.page = "youtube"
-            st.rerun()
-
-    with col2:
-        if st.button("📝 Analisis Kalimat"):
-            st.session_state.page = "kalimat"
-            st.rerun()
-
 # ===============================
 # ANALISIS YOUTUBE
 # ===============================
-elif st.session_state.page == "youtube":
+elif menu == "Analisis YouTube":
 
-    st.title("🎥 Analisis Sentimen YouTube")
+    st.title("🎥 Analisis Sentimen Komentar YouTube")
+
     link = st.text_input("Masukkan link YouTube")
 
-    if st.button("📊 Analisis"):
+    if st.button("📊 Analisis Komentar"):
         video_id = extract_video_id(link)
-        if video_id:
-            with st.spinner("Memproses komentar..."):
+
+        if video_id is None:
+            st.error("Link YouTube tidak valid")
+        else:
+            with st.spinner("Mengambil dan menganalisis komentar..."):
                 comments = get_comments(video_id)
                 df = pd.DataFrame(comments, columns=["comment"])
                 df["clean"] = df["comment"].apply(preprocess_text)
 
                 X = tfidf.transform(df["clean"])
-                df["sentiment"] = model.predict(X)
+                df["label"] = model.predict(X)
+                df["sentiment"] = df["label"].map({1: "Positif", 0: "Negatif"})
 
             st.success("Analisis selesai")
 
-    if st.button("⬅️ Kembali"):
-        st.session_state.page = "home"
-        st.rerun()
+            st.subheader("Distribusi Sentimen")
+            fig, ax = plt.subplots()
+            df["sentiment"].value_counts().plot.pie(
+                autopct="%1.1f%%", ax=ax
+            )
+            ax.set_ylabel("")
+            st.pyplot(fig)
+
+            st.subheader("Top 5 Komentar Positif")
+            st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
+
+            st.subheader("Top 5 Komentar Negatif")
+            st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
 
 # ===============================
 # ANALISIS KALIMAT
 # ===============================
-elif st.session_state.page == "kalimat":
+elif menu == "Analisis Kalimat":
 
     st.title("📝 Analisis Sentimen Kalimat")
-    kalimat = st.text_area("Masukkan kalimat")
+
+    kalimat = st.text_area("Masukkan kalimat yang ingin dianalisis")
 
     if st.button("🔍 Analisis Kalimat"):
-        clean = preprocess_text(kalimat)
-        X = tfidf.transform([clean])
-        pred = model.predict(X)[0]
+        if kalimat.strip() == "":
+            st.warning("Kalimat tidak boleh kosong")
+        else:
+            clean = preprocess_text(kalimat)
+            X = tfidf.transform([clean])
+            pred = model.predict(X)[0]
 
-        st.info(f"Kalimat: {kalimat}")
-        st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
-
-    if st.button("⬅️ Kembali"):
-        st.session_state.page = "home"
-        st.rerun()
+            st.info(f"Kalimat: {kalimat}")
+            st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
