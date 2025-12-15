@@ -1,6 +1,6 @@
 # ===============================
 # Dashboard Analisis Sentimen YouTube
-# TF-IDF + XGBoost
+# Mount Jawa Style
 # ===============================
 
 import streamlit as st
@@ -18,21 +18,35 @@ import nltk
 # ===============================
 st.set_page_config(
     page_title="Analisis Sentimen YouTube",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 # ===============================
-# REMOVE STREAMLIT PADDING
+# CSS GLOBAL (FULL SCREEN + HIDE SIDEBAR)
 # ===============================
 st.markdown(
     """
     <style>
     [data-testid="stAppViewContainer"] {
         padding: 0;
+        margin: 0;
     }
+
     [data-testid="stHeader"] {
         display: none;
     }
+
+    /* Sidebar hidden, muncul saat hover */
+    [data-testid="stSidebar"] {
+        width: 70px;
+        transition: all 0.3s ease;
+    }
+
+    [data-testid="stSidebar"]:hover {
+        width: 260px;
+    }
+
     </style>
     """,
     unsafe_allow_html=True
@@ -131,12 +145,9 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # ===============================
-# SIDEBAR BUTTONS
+# SIDEBAR MENU (NO HOME)
 # ===============================
-st.sidebar.title("📌 Menu")
-
-if st.sidebar.button("🏠 Home"):
-    st.session_state.page = "home"
+st.sidebar.markdown("## 🔍 Menu Analisis")
 
 if st.sidebar.button("🎥 Analisis YouTube"):
     st.session_state.page = "youtube"
@@ -145,7 +156,7 @@ if st.sidebar.button("📝 Analisis Kalimat"):
     st.session_state.page = "kalimat"
 
 # ===============================
-# HOME PAGE
+# HOME PAGE (FULL SCREEN)
 # ===============================
 if st.session_state.page == "home":
 
@@ -154,6 +165,7 @@ if st.session_state.page == "home":
         <style>
         .hero {{
             height: 100vh;
+            width: 100vw;
             background-image: url("data:image/jpeg;base64,{bg}");
             background-size: cover;
             background-position: center;
@@ -161,8 +173,8 @@ if st.session_state.page == "home":
             align-items: center;
             justify-content: center;
         }}
-        .box {{
-            background: rgba(0,0,0,0.55);
+        .overlay {{
+            background: rgba(0,0,0,0.6);
             padding: 80px;
             border-radius: 20px;
             color: white;
@@ -171,12 +183,10 @@ if st.session_state.page == "home":
         </style>
 
         <div class="hero">
-            <div class="box">
+            <div class="overlay">
                 <h1>Dashboard Analisis Sentimen YouTube</h1>
-                <p>
-                    Analisis komentar YouTube & kalimat teks<br>
-                    menggunakan TF-IDF dan XGBoost
-                </p>
+                <p>TF-IDF + XGBoost<br>Analisis komentar & kalimat teks</p>
+                <p style="margin-top:20px;">⬅️ Gunakan menu di kiri</p>
             </div>
         </div>
         """,
@@ -188,16 +198,16 @@ if st.session_state.page == "home":
 # ===============================
 elif st.session_state.page == "youtube":
 
-    st.title("🎥 Analisis Sentimen Komentar YouTube")
+    st.title("🎥 Analisis Sentimen YouTube")
     link = st.text_input("Masukkan link YouTube")
 
     if st.button("📊 Analisis"):
         video_id = extract_video_id(link)
 
-        if video_id is None:
-            st.error("Link YouTube tidak valid")
+        if not video_id:
+            st.error("Link tidak valid")
         else:
-            with st.spinner("Memproses komentar..."):
+            with st.spinner("Mengambil komentar..."):
                 comments = get_comments(video_id)
                 df = pd.DataFrame(comments, columns=["comment"])
                 df["clean"] = df["comment"].apply(preprocess_text)
