@@ -65,7 +65,7 @@ def preprocess_text(text):
 # ===============================
 # YOUTUBE FUNCTIONS
 # ===============================
-API_KEY = "ISI_API_KEY_KAMU"
+API_KEY = "AIzaSyCz4yYoK_w-3IYkbeGCHtL4CoATBf6VN1I"
 
 def extract_video_id(url):
     if "youtu.be/" in url:
