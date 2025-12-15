@@ -5,10 +5,8 @@
 
 import streamlit as st
 import pandas as pd
-import numpy as np
-import re, emoji, joblib
+import re, emoji, joblib, base64
 import matplotlib.pyplot as plt
-import base64
 
 from googleapiclient.discovery import build
 from nltk.corpus import stopwords
@@ -24,7 +22,24 @@ st.set_page_config(
 )
 
 # ===============================
-# LOAD IMAGE BASE64
+# REMOVE STREAMLIT PADDING
+# ===============================
+st.markdown(
+    """
+    <style>
+    [data-testid="stAppViewContainer"] {
+        padding: 0;
+    }
+    [data-testid="stHeader"] {
+        display: none;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ===============================
+# LOAD BACKGROUND IMAGE
 # ===============================
 def get_base64_image(path):
     with open(path, "rb") as f:
@@ -116,19 +131,23 @@ if "page" not in st.session_state:
     st.session_state.page = "home"
 
 # ===============================
-# SIDEBAR NAVIGATION
+# SIDEBAR BUTTONS
 # ===============================
 st.sidebar.title("📌 Menu")
 
-menu = st.sidebar.radio(
-    "Navigasi",
-    ["Home", "Analisis YouTube", "Analisis Kalimat"]
-)
+if st.sidebar.button("🏠 Home"):
+    st.session_state.page = "home"
+
+if st.sidebar.button("🎥 Analisis YouTube"):
+    st.session_state.page = "youtube"
+
+if st.sidebar.button("📝 Analisis Kalimat"):
+    st.session_state.page = "kalimat"
 
 # ===============================
-# HOME PAGE (FULL SCREEN)
+# HOME PAGE
 # ===============================
-if menu == "Home":
+if st.session_state.page == "home":
 
     st.markdown(
         f"""
@@ -142,24 +161,20 @@ if menu == "Home":
             align-items: center;
             justify-content: center;
         }}
-        .content {{
+        .box {{
             background: rgba(0,0,0,0.55);
-            padding: 70px;
+            padding: 80px;
             border-radius: 20px;
             color: white;
             text-align: center;
-            width: 85%;
-        }}
-        .content h1 {{
-            font-size: 3.2rem;
         }}
         </style>
 
         <div class="hero">
-            <div class="content">
+            <div class="box">
                 <h1>Dashboard Analisis Sentimen YouTube</h1>
                 <p>
-                    Analisis komentar YouTube dan kalimat teks<br>
+                    Analisis komentar YouTube & kalimat teks<br>
                     menggunakan TF-IDF dan XGBoost
                 </p>
             </div>
@@ -171,59 +186,45 @@ if menu == "Home":
 # ===============================
 # ANALISIS YOUTUBE
 # ===============================
-elif menu == "Analisis YouTube":
+elif st.session_state.page == "youtube":
 
     st.title("🎥 Analisis Sentimen Komentar YouTube")
-
     link = st.text_input("Masukkan link YouTube")
 
-    if st.button("📊 Analisis Komentar"):
+    if st.button("📊 Analisis"):
         video_id = extract_video_id(link)
 
         if video_id is None:
             st.error("Link YouTube tidak valid")
         else:
-            with st.spinner("Mengambil dan menganalisis komentar..."):
+            with st.spinner("Memproses komentar..."):
                 comments = get_comments(video_id)
                 df = pd.DataFrame(comments, columns=["comment"])
                 df["clean"] = df["comment"].apply(preprocess_text)
 
                 X = tfidf.transform(df["clean"])
-                df["label"] = model.predict(X)
-                df["sentiment"] = df["label"].map({1: "Positif", 0: "Negatif"})
+                df["sentiment"] = model.predict(X)
 
             st.success("Analisis selesai")
 
-            st.subheader("Distribusi Sentimen")
-            fig, ax = plt.subplots()
-            df["sentiment"].value_counts().plot.pie(
-                autopct="%1.1f%%", ax=ax
-            )
-            ax.set_ylabel("")
-            st.pyplot(fig)
-
-            st.subheader("Top 5 Komentar Positif")
-            st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
-
-            st.subheader("Top 5 Komentar Negatif")
-            st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
+    if st.button("⬅️ Kembali ke Home"):
+        st.session_state.page = "home"
 
 # ===============================
 # ANALISIS KALIMAT
 # ===============================
-elif menu == "Analisis Kalimat":
+elif st.session_state.page == "kalimat":
 
     st.title("📝 Analisis Sentimen Kalimat")
-
-    kalimat = st.text_area("Masukkan kalimat yang ingin dianalisis")
+    kalimat = st.text_area("Masukkan kalimat")
 
     if st.button("🔍 Analisis Kalimat"):
-        if kalimat.strip() == "":
-            st.warning("Kalimat tidak boleh kosong")
-        else:
-            clean = preprocess_text(kalimat)
-            X = tfidf.transform([clean])
-            pred = model.predict(X)[0]
+        clean = preprocess_text(kalimat)
+        X = tfidf.transform([clean])
+        pred = model.predict(X)[0]
 
-            st.info(f"Kalimat: {kalimat}")
-            st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
+        st.info(f"Kalimat: {kalimat}")
+        st.success("Sentimen POSITIF" if pred == 1 else "Sentimen NEGATIF")
+
+    if st.button("⬅️ Kembali ke Home"):
+        st.session_state.page = "home"
