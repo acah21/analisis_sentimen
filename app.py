@@ -5,6 +5,7 @@
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import re, emoji, joblib
 import matplotlib.pyplot as plt
 
@@ -14,7 +15,7 @@ from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 import nltk
 
 # ===============================
-# KONFIGURASI HALAMAN
+# PAGE CONFIG
 # ===============================
 st.set_page_config(
     page_title="Analisis Sentimen YouTube",
@@ -22,7 +23,7 @@ st.set_page_config(
 )
 
 # ===============================
-# DOWNLOAD NLTK
+# NLTK SAFE DOWNLOAD
 # ===============================
 try:
     nltk.data.find("corpora/stopwords")
@@ -43,7 +44,8 @@ stemmer = StemmerFactory().create_stemmer()
 
 normalisasi_dict = {
     "gk": "tidak", "ga": "tidak", "ngga": "tidak",
-    "yg": "yang", "klo": "kalau", "gw": "saya", "gue": "saya"
+    "yg": "yang", "d": "di", "klo": "kalau",
+    "gw": "saya", "gue": "saya", "km": "kamu", "tp": "tapi"
 }
 
 def preprocess_text(text):
@@ -63,7 +65,7 @@ def preprocess_text(text):
 # ===============================
 # YOUTUBE FUNCTIONS
 # ===============================
-API_KEY = st.secrets["API_KEY"]
+API_KEY = "ISI_API_KEY_KAMU"
 
 def extract_video_id(url):
     if "youtu.be/" in url:
@@ -98,54 +100,96 @@ def get_comments(video_id, max_results=300):
     return comments
 
 # ===============================
-# NAVIGASI
+# SESSION STATE
 # ===============================
-menu = st.session_state.get("menu", "home")
+if "menu" not in st.session_state:
+    st.session_state.menu = "home"
 
 # ===============================
-# HOME
+# HOME PAGE (MOUNT JAWA STYLE)
 # ===============================
-if menu == "home":
-
-    st.image("bg.jpeg", use_container_width=True)
+if st.session_state.menu == "home":
 
     st.markdown(
-        "<h1 style='text-align:center;'>Dashboard Analisis Sentimen YouTube</h1>",
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        "<p style='text-align:center;'>TF-IDF + XGBoost</p>",
+        """
+        <style>
+        .hero {
+            position: relative;
+            height: 85vh;
+            background-image: url("bg.jpeg");
+            background-size: cover;
+            background-position: center;
+            border-radius: 20px;
+        }
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            border-radius: 20px;
+        }
+        .hero-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        </style>
+        """,
         unsafe_allow_html=True
     )
 
+    st.markdown(
+        """
+        <div class="hero">
+            <div class="overlay"></div>
+            <div class="hero-content">
+                <h1>Dashboard Analisis Sentimen YouTube</h1>
+                <p>TF-IDF + XGBoost untuk Analisis Komentar</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.write("")
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("🎥 Analisis YouTube", use_container_width=True):
+        if st.button("🎥 Analisis YouTube"):
             st.session_state.menu = "youtube"
             st.rerun()
 
     with col2:
-        if st.button("📝 Analisis Kalimat", use_container_width=True):
+        if st.button("📝 Analisis Kalimat"):
             st.session_state.menu = "kalimat"
             st.rerun()
 
 # ===============================
 # ANALISIS YOUTUBE
 # ===============================
-elif menu == "youtube":
+elif st.session_state.menu == "youtube":
 
-    st.title("🎥 Analisis Sentimen Komentar YouTube")
+    st.title("🎥 Analisis Sentimen YouTube")
 
-    yt_link = st.text_input("Masukkan Link YouTube")
+    link = st.text_input("Masukkan Link YouTube")
 
-    if st.button("📊 Analisis YouTube"):
-        video_id = extract_video_id(yt_link)
+    if st.button("📊 Analisis"):
+        video_id = extract_video_id(link)
 
-        if not video_id:
-            st.error("Link YouTube tidak valid.")
+        if video_id is None:
+            st.error("Link YouTube tidak valid")
         else:
-            with st.spinner("Mengambil dan menganalisis komentar..."):
+            with st.spinner("Mengambil & menganalisis komentar..."):
                 comments = get_comments(video_id)
                 df = pd.DataFrame(comments, columns=["comment"])
                 df["clean"] = df["comment"].apply(preprocess_text)
@@ -163,33 +207,33 @@ elif menu == "youtube":
             st.pyplot(fig)
 
             st.subheader("Top 5 Komentar Positif")
-            st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
+            st.write(df[df["sentiment"]=="Positif"]["comment"].head(5))
 
             st.subheader("Top 5 Komentar Negatif")
-            st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
+            st.write(df[df["sentiment"]=="Negatif"]["comment"].head(5))
 
-    if st.button("⬅️ Kembali ke Home"):
+    if st.button("⬅️ Kembali"):
         st.session_state.menu = "home"
         st.rerun()
 
 # ===============================
 # ANALISIS KALIMAT
 # ===============================
-elif menu == "kalimat":
+elif st.session_state.menu == "kalimat":
 
     st.title("📝 Analisis Sentimen Kalimat")
 
-    kalimat = st.text_area("Masukkan Kalimat")
+    kalimat = st.text_area("Masukkan kalimat yang ingin dianalisis")
 
     if st.button("🔍 Analisis Kalimat"):
         clean = preprocess_text(kalimat)
         X = tfidf.transform([clean])
         pred = model.predict(X)[0]
-        hasil = "Positif" if pred == 1 else "Negatif"
 
-        st.info(f"Kalimat yang dianalisis:\n\n{kalimat}")
-        st.success(f"Hasil Sentimen: **{hasil}**")
+        st.subheader("Hasil Analisis")
+        st.info(f"Kalimat: {kalimat}")
+        st.success("Sentimen: POSITIF" if pred == 1 else "Sentimen: NEGATIF")
 
-    if st.button("⬅️ Kembali ke Home"):
+    if st.button("⬅️ Kembali"):
         st.session_state.menu = "home"
         st.rerun()
