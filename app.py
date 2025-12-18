@@ -107,12 +107,18 @@ def get_comments(video_id, max_results=300):
     return comments
 
 # =====================================
-# HERO SECTION (BACKGROUND SETENGAH)
+# HERO SECTION (FULL WIDTH – SETENGAH LAYAR)
 # =====================================
 st.markdown(
     f"""
     <style>
-    .hero {{
+    .hero-wrapper {{
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+        width: 100vw;
         height: 70vh;
         background-image: url("data:image/jpeg;base64,{bg_base64}");
         background-size: cover;
@@ -121,20 +127,31 @@ st.markdown(
         align-items: center;
         justify-content: center;
     }}
+
     .hero-box {{
         background: rgba(0,0,0,0.6);
-        padding: 50px;
-        border-radius: 20px;
+        padding: 55px 75px;
+        border-radius: 26px;
         color: white;
         text-align: center;
-        width: 70%;
+        max-width: 900px;
+    }}
+
+    .hero-box h1 {{
+        font-size: 42px;
+        margin-bottom: 20px;
+    }}
+
+    .hero-box p {{
+        font-size: 18px;
+        margin-bottom: 10px;
     }}
     </style>
 
-    <div class="hero">
+    <div class="hero-wrapper">
         <div class="hero-box">
             <h1>Analisis Sentimen Komentar YouTube</h1>
-            <p style="font-size:18px;">
+            <p>
                 Sistem analisis sentimen komentar YouTube
                 menggunakan <b>TF-IDF</b> dan <b>XGBoost</b>.
             </p>
@@ -146,13 +163,13 @@ st.markdown(
 )
 
 # =====================================
-# INPUT LINK (CENTER - WHITE AREA)
+# INPUT LINK (AREA PUTIH – TENGAH)
 # =====================================
 st.markdown("<br><br>", unsafe_allow_html=True)
 
-col_left, col_center, col_right = st.columns([1, 2, 1])
+col1, col2, col3 = st.columns([1, 2, 1])
 
-with col_center:
+with col2:
     st.subheader("🔗 Masukkan Link Video YouTube")
     link = st.text_input("", placeholder="https://www.youtube.com/watch?v=...")
     analyze = st.button("📊 Analisis Komentar", use_container_width=True)
@@ -186,9 +203,9 @@ if analyze:
         positif_pct = (sentiment_count.get("Positif", 0) / total) * 100
         negatif_pct = (sentiment_count.get("Negatif", 0) / total) * 100
 
-        col1, col2 = st.columns([1, 2])
+        colA, colB = st.columns([1, 2])
 
-        with col1:
+        with colA:
             fig, ax = plt.subplots(figsize=(3.5, 3.5))
             sentiment_count.plot.pie(
                 autopct="%1.1f%%",
@@ -198,7 +215,7 @@ if analyze:
             ax.set_ylabel("")
             st.pyplot(fig)
 
-        with col2:
+        with colB:
             st.markdown("### 🧾 Interpretasi Hasil")
             st.write(
                 f"""
@@ -213,12 +230,12 @@ if analyze:
 
         st.markdown("---")
 
-        col3, col4 = st.columns(2)
+        colC, colD = st.columns(2)
 
-        with col3:
+        with colC:
             st.markdown("**Top 5 Komentar Positif**")
             st.write(df[df["sentiment"] == "Positif"]["comment"].head(5))
 
-        with col4:
+        with colD:
             st.markdown("**Top 5 Komentar Negatif**")
             st.write(df[df["sentiment"] == "Negatif"]["comment"].head(5))
