@@ -107,25 +107,23 @@ def get_comments(video_id, max_results=300):
     return comments
 
 # =====================================
-# HERO SECTION (HOMEPAGE)
+# HERO SECTION (BACKGROUND SETENGAH)
 # =====================================
 st.markdown(
     f"""
     <style>
-    [data-testid="stAppViewContainer"] {{
+    .hero {{
+        height: 70vh;
         background-image: url("data:image/jpeg;base64,{bg_base64}");
         background-size: cover;
         background-position: center;
-    }}
-    .hero {{
-        height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
     }}
     .hero-box {{
         background: rgba(0,0,0,0.6);
-        padding: 60px;
+        padding: 50px;
         border-radius: 20px;
         color: white;
         text-align: center;
@@ -137,10 +135,10 @@ st.markdown(
         <div class="hero-box">
             <h1>Analisis Sentimen Komentar YouTube</h1>
             <p style="font-size:18px;">
-                Sistem ini menganalisis sentimen komentar YouTube menggunakan
-                metode <b>TF-IDF</b> dan algoritma <b>XGBoost</b>.
+                Sistem analisis sentimen komentar YouTube
+                menggunakan <b>TF-IDF</b> dan <b>XGBoost</b>.
             </p>
-            <p>Masukkan link video YouTube untuk mengetahui kecenderungan sentimen publik.</p>
+            <p>Masukkan link video untuk memulai analisis.</p>
         </div>
     </div>
     """,
@@ -148,12 +146,16 @@ st.markdown(
 )
 
 # =====================================
-# INPUT LINK (CENTER)
+# INPUT LINK (CENTER - WHITE AREA)
 # =====================================
-st.markdown("## 🔗 Masukkan Link Video YouTube")
-link = st.text_input("", placeholder="https://www.youtube.com/watch?v=...")
+st.markdown("<br><br>", unsafe_allow_html=True)
 
-analyze = st.button("📊 Analisis Komentar")
+col_left, col_center, col_right = st.columns([1, 2, 1])
+
+with col_center:
+    st.subheader("🔗 Masukkan Link Video YouTube")
+    link = st.text_input("", placeholder="https://www.youtube.com/watch?v=...")
+    analyze = st.button("📊 Analisis Komentar", use_container_width=True)
 
 # =====================================
 # ANALISIS & OUTPUT
@@ -175,9 +177,6 @@ if analyze:
 
         st.success("Analisis selesai")
 
-        # ===============================
-        # HASIL ANALISIS
-        # ===============================
         st.markdown("---")
         st.subheader("📊 Hasil Analisis Sentimen")
 
